@@ -91,4 +91,8 @@ if __name__ == "__main__":
         all_review += (" "+get_all_reviews(AMAZON_PREFIX+rev_url))
     adj_dict = text_to_adj_dict(all_review)
     print(adj_dict)
-    
+
+
+#TODO: Add Review Text w. different dictionaries
+#TODO: And Spacy/or better nltk
+#TODO: Add Navigating Review Pages
