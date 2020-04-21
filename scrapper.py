@@ -48,6 +48,23 @@ def text_to_adj_dict(text):
     # return sortrd by value:
     return {k: v for k, v in sorted(adj_dict.items(), reverse=True, key=lambda item: item[1])}
 
+class Product():
+    # Product have the URL and a List of review text
+    def __init__(self, url):
+        self.url = url
+        self.review_texts = []
+
+    def add_review_text(self, text):
+        self.review_texts.append(text)
+
+    @staticmethod
+    def url_list_to_product_list(url_list):
+        product_list = []
+        for url in url_list:
+            product_list.append(Product(url))
+        return product_list
+
+
 class Navigator():
     def __init__(self, product_name):
         self.product_name = product_name.replace(' ', '+')
@@ -75,7 +92,7 @@ class Navigator():
                     products_urls.append(p.get('href'))
             i += 1
         print(f"found {len(products_urls)} items.")
-        return products_urls
+        return Product.url_list_to_product_list(products_urls)
 
     def get_all_reviews_from_page(self, url):
         page = requests.get(url, headers=headers)
@@ -107,19 +124,18 @@ class Navigator():
 
 if __name__ == "__main__":
     nav = Navigator("table")
-    products_urls = nav.get_products(1)
+    products = nav.get_products(1)
     all_review = ""
-    for prod_url in tqdm(products_urls):
-        rev_url = prod_url.replace("/dp/", "/product-review/")
+    for prod in tqdm(products):
+        rev_url = prod.url.replace("/dp/", "/product-review/")
         all_review += (" "+nav.get_product_review_text(AMAZON_PREFIX+rev_url))
     adj_dict = text_to_adj_dict(all_review)
     print(adj_dict)
 
+#TODO: Adding search by category
 
-#TODO: Think of a better structure
 #TODO: Add Product Information Text w. different dictionaries
 #TODO: And Spacy/or better nltk
 #TODO: Saving the url of the products, with a dict per URL
-#TODO: Adding search by category
 #TODO: In the dictionary, save a pointer to the original text
 #TODO: Add option to export (use argparser)
