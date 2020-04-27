@@ -8,6 +8,7 @@ URL = "https://www.amazon.com/Happy-Haystack-Stainless-Bottle-Design/product-rev
 URL = "https://www.amazon.com/Sleepwish-Blanket-Cartoon-Pattern-Blankets/product-reviews/B075L8PXM1/ref=cm_cr_arp_d_viewpnt_lft?ie=UTF8&reviewerType=all_reviews"
 
 SEARCH_URL = "https://www.amazon.com/s?k={SEARCH_TERM}&page={PAGE_NUM}"
+CAT_SEARCH_URL = "https://www.amazon.com/s?k={SEARCH_TERM}&i={CATEGORY}&page={PAGE_NUM}"
 AMAZON_PREFIX = "https://www.amazon.com"
 
 PRODUCT_XPATH = '//a[@class="a-link-normal a-text-normal"]'
@@ -66,8 +67,19 @@ class Product():
 
 
 class Navigator():
-    def __init__(self, product_name):
+    def __init__(self, product_name, category=None):
         self.product_name = product_name.replace(' ', '+')
+        self.category = category
+        if category and category not in categories:
+            print("Wrong category, doing general search instead.")
+            self.category = None
+
+    def get_url(self, page_num):
+        if self.category:
+            return CAT_SEARCH_URL.format(SEARCH_TERM=self.product_name, CATEGORY=self.category, PAGE_NUM=page_num)
+        else:
+            return SEARCH_URL.format(SEARCH_TERM=self.product_name, PAGE_NUM=page_num)
+
 
     def get_products(self, n):
         """
@@ -78,7 +90,8 @@ class Navigator():
         products_urls = []
         i = 1
         while(len(products_urls) < n):
-            url = SEARCH_URL.format(SEARCH_TERM=self.product_name, PAGE_NUM=i)
+            url = self.get_url(i)
+            print(f"url is {url}")
             page = requests.get(url, headers=headers)
             self.doc = lxml.html.fromstring(page.content)
             products_a = self.doc.xpath(PRODUCT_XPATH)
@@ -123,7 +136,7 @@ class Navigator():
 
 
 if __name__ == "__main__":
-    nav = Navigator("table")
+    nav = Navigator("table", "kitchen")
     products = nav.get_products(1)
     all_review = ""
     for prod in tqdm(products):
@@ -132,10 +145,11 @@ if __name__ == "__main__":
     adj_dict = text_to_adj_dict(all_review)
     print(adj_dict)
 
-#TODO: Adding search by category
+#TODO: Continue adding category support (for now it seems taht when using categories it doesn't extract reviews)
 
+#TODO: Use argparser for options
 #TODO: Add Product Information Text w. different dictionaries
 #TODO: And Spacy/or better nltk
 #TODO: Saving the url of the products, with a dict per URL
 #TODO: In the dictionary, save a pointer to the original text
-#TODO: Add option to export (use argparser)
+#TODO: Add option to export
