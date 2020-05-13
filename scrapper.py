@@ -1,10 +1,12 @@
 import requests
 import lxml
 from lxml import html
-from nltk.corpus import wordnet as wn
 from tqdm import tqdm # for pretty progress bars
 import argparse
 import json
+
+from nltk.corpus import wordnet as wn
+import spacy
 
 URL = "https://www.amazon.com/Happy-Haystack-Stainless-Bottle-Design/product-reviews/B07YL48NZQ/&reviewerType=all_reviews"
 URL = "https://www.amazon.com/Sleepwish-Blanket-Cartoon-Pattern-Blankets/product-reviews/B075L8PXM1/ref=cm_cr_arp_d_viewpnt_lft?ie=UTF8&reviewerType=all_reviews"
@@ -52,14 +54,15 @@ def main():
         rev_url = prod.url.replace("/dp/", "/product-review/")
         print(f"The URL we are looking for:\n{AMAZON_PREFIX+rev_url}\n")
         all_review += (" "+nav.get_product_review_text(AMAZON_PREFIX+rev_url))
-    adj_dict = text_to_adj_dict(all_review)
+    adj_dict = adj_funcs[args.engine](all_review)
     print(adj_dict)
     if args.dump:
         dump_file = open(args.dump, 'w')
         dump_file.write(json.dumps(adj_dict))
 
+# Eventually maybe turn into a class
 
-def text_to_adj_dict(text):
+def nltk_text_to_adj_dict(text):
     text = text.lower()
     adj_dict = {}
     for word in text.split():
@@ -73,6 +76,23 @@ def text_to_adj_dict(text):
                         adj_dict[word] = 1
     # return sortrd by value:
     return {k: v for k, v in sorted(adj_dict.items(), reverse=True, key=lambda item: item[1])}
+
+def spacy_text_to_adj_dict(text):
+    text = text.lower()
+    adj_dict = {}
+    nlp = spacy.load("en_core_web_sm")
+    doc = nlp(text)
+    for token in doc:
+        if token.text in adj_dict:
+            adj_dict[word] += 1
+        else:
+            # Find the synonims and see what their POS is:
+            if token.pos_ == "ADJ":
+                adj_dict[word] = 1
+    # return sortrd by value:
+    return {k: v for k, v in sorted(adj_dict.items(), reverse=True, key=lambda item: item[1])}
+
+adj_funcs = {'spacy': spacy_text_to_adj_dict, 'nltk': nltk_text_to_adj_dict}
 
 class Product():
     # Product have the URL and a List of review text
@@ -191,14 +211,18 @@ def parse_args():
         help='Save the dictionary to dump_file (using JSON)',
         metavar="dump_file", default=None
         )
+    parser.add_argument(
+        '-e', '--engine',
+        help='Choose NLP analyzing engine (NLTK or spaCy)', type=str.lower, # This casts the input into lowercase
+        metavar="dump_file", default='spacy', choices=['nltk', 'spacy']
+        )
     args = parser.parse_args()
     return args
 
 if __name__ == "__main__":
     main()
 
+#TODO: Pass an argument for max reviews (and not max pages)
 #TODO: Add Product Information Text w. different dictionaries
-#TODO: And Spacy/or better nltk
 #TODO: Saving the url of the products, with a dict per URL
 #TODO: In the dictionary, save a pointer to the original text
-#TODO: Add option to export
