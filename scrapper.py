@@ -47,7 +47,7 @@ def main():
         print('All possible categories:')
         print('  '+'\n  '.join(categories))
         exit(0)
-    nav = Navigator(args.keyword, args.category)
+    nav = Navigator(args.keyword, args.category, args.review_pages)
     products = nav.get_products(args.pages)
     all_review = ""
     for prod in tqdm(products):
@@ -84,11 +84,11 @@ def spacy_text_to_adj_dict(text):
     doc = nlp(text)
     for token in doc:
         if token.text in adj_dict:
-            adj_dict[word] += 1
+            adj_dict[token.text] += 1
         else:
             # Find the synonims and see what their POS is:
             if token.pos_ == "ADJ":
-                adj_dict[word] = 1
+                adj_dict[token.text] = 1
     # return sortrd by value:
     return {k: v for k, v in sorted(adj_dict.items(), reverse=True, key=lambda item: item[1])}
 
@@ -112,12 +112,13 @@ class Product():
 
 
 class Navigator():
-    def __init__(self, product_name, category=None):
+    def __init__(self, product_name, category=None, max_review_pages=None):
         self.product_name = product_name.replace(' ', '+')
         self.category = category
         if category and category not in categories:
             print("Wrong category, doing general search instead.")
             self.category = None
+        self.max_review_pages = max_review_pages
 
     def get_url(self, page_num):
         if self.category:
@@ -175,7 +176,8 @@ class Navigator():
         doc = lxml.html.fromstring(page.content)
         count = int(doc.xpath(REVIEW_COUNT_XPATH)[0].text.split()[-2].replace(',',''))
         page_number = - (-count // REVIEW_IN_PAGE) # Rounding Up
-        
+        if self.max_review_pages:
+            page_number = min(page_number, self.max_review_pages)
         page_suffix = "&pageNumber={num}"
         text = ''
         for i in tqdm(range(1, page_number+1)):
@@ -214,7 +216,11 @@ def parse_args():
     parser.add_argument(
         '-e', '--engine',
         help='Choose NLP analyzing engine (NLTK or spaCy)', type=str.lower, # This casts the input into lowercase
-        metavar="dump_file", default='spacy', choices=['nltk', 'spacy']
+        metavar="adjective_engine", default='spacy', choices=['nltk', 'spacy']
+        )
+    parser.add_argument(
+        '-rp', '--review-pages',
+        help='Maximum number of review pages to search for in every product', type=int
         )
     args = parser.parse_args()
     return args
