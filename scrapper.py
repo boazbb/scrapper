@@ -49,12 +49,12 @@ def main():
         exit(0)
     nav = Navigator(args.keyword, args.category, args.review_pages)
     products = nav.get_products(args.pages)
-    all_review = ""
+    reviews = []
     for prod in tqdm(products):
         rev_url = prod.url.replace("/dp/", "/product-review/")
         print(f"The URL we are looking for:\n{AMAZON_PREFIX+rev_url}\n")
-        all_review += (" "+nav.get_product_review_text(AMAZON_PREFIX+rev_url))
-    adj_dict = adj_funcs[args.engine](all_review)
+        reviews.append(" "+nav.get_product_review_text(AMAZON_PREFIX+rev_url))
+    adj_dict = adj_funcs[args.engine](reviews)
     print(adj_dict)
     if args.dump:
         dump_file = open(args.dump, 'w')
@@ -62,33 +62,35 @@ def main():
 
 # Eventually maybe turn into a class
 
-def nltk_text_to_adj_dict(text):
-    text = text.lower()
+def nltk_text_to_adj_dict(reviews):
     adj_dict = {}
-    for word in text.split():
-        if word in adj_dict:
-            adj_dict[word] += 1
-        else:
-            # Find the synonims and see what their POS is:
-            for tmp in wn.synsets(word):
-                if tmp.name().split('.')[0] == word:
-                    if tmp.pos() == 'a':
-                        adj_dict[word] = 1
+    for text in reviews:
+        text = text.lower()
+        for word in text.split():
+            if word in adj_dict:
+                adj_dict[word] += 1
+            else:
+                # Find the synonims and see what their POS is:
+                for tmp in wn.synsets(word):
+                    if tmp.name().split('.')[0] == word:
+                        if tmp.pos() == 'a':
+                            adj_dict[word] = 1
     # return sortrd by value:
     return {k: v for k, v in sorted(adj_dict.items(), reverse=True, key=lambda item: item[1])}
 
-def spacy_text_to_adj_dict(text):
-    text = text.lower()
+def spacy_text_to_adj_dict(reviews):
     adj_dict = {}
     nlp = spacy.load("en_core_web_sm")
-    doc = nlp(text)
-    for token in doc:
-        if token.text in adj_dict:
-            adj_dict[token.text] += 1
-        else:
-            # Find the synonims and see what their POS is:
-            if token.pos_ == "ADJ":
-                adj_dict[token.text] = 1
+    for text in reviews:
+        text = text.lower()
+        doc = nlp(text)
+        for token in doc:
+            if token.text in adj_dict:
+                adj_dict[token.text] += 1
+            else:
+                # Find the synonims and see what their POS is:
+                if token.pos_ == "ADJ":
+                    adj_dict[token.text] = 1
     # return sortrd by value:
     return {k: v for k, v in sorted(adj_dict.items(), reverse=True, key=lambda item: item[1])}
 
@@ -228,7 +230,7 @@ def parse_args():
 if __name__ == "__main__":
     main()
 
-#TODO: Pass an argument for max reviews (and not max pages)
+#TODO: Add option to dump raw (and then analyze files, probably 2 classes/modules)
 #TODO: Add Product Information Text w. different dictionaries
 #TODO: Saving the url of the products, with a dict per URL
 #TODO: In the dictionary, save a pointer to the original text
