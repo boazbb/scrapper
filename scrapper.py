@@ -5,9 +5,6 @@ from tqdm import tqdm # for pretty progress bars
 import argparse
 import json
 
-from nltk.corpus import wordnet as wn
-import spacy
-
 URL = "https://www.amazon.com/Happy-Haystack-Stainless-Bottle-Design/product-reviews/B07YL48NZQ/&reviewerType=all_reviews"
 URL = "https://www.amazon.com/Sleepwish-Blanket-Cartoon-Pattern-Blankets/product-reviews/B075L8PXM1/ref=cm_cr_arp_d_viewpnt_lft?ie=UTF8&reviewerType=all_reviews"
 
@@ -41,6 +38,7 @@ categories = ["arts-crafts", "automotive", "baby-products", "beauty", "stripbook
 REVIEW_IN_PAGE = 10
 
 def main():
+    print('a\na')
     args = parse_args()
     if (args.list_categories):
         # Print all possible categories
@@ -49,52 +47,13 @@ def main():
         exit(0)
     nav = Navigator(args.keyword, args.category, args.review_pages)
     products = nav.get_products(args.pages)
-    reviews = []
+    reviews = {}
     for prod in tqdm(products):
         rev_url = prod.url.replace("/dp/", "/product-review/")
         print(f"The URL we are looking for:\n{AMAZON_PREFIX+rev_url}\n")
-        reviews.append(" "+nav.get_product_review_text(AMAZON_PREFIX+rev_url))
-    adj_dict = adj_funcs[args.engine](reviews)
-    print(adj_dict)
-    if args.dump:
-        dump_file = open(args.dump, 'w')
-        dump_file.write(json.dumps(adj_dict))
-
-# Eventually maybe turn into a class
-
-def nltk_text_to_adj_dict(reviews):
-    adj_dict = {}
-    for text in reviews:
-        text = text.lower()
-        for word in text.split():
-            if word in adj_dict:
-                adj_dict[word] += 1
-            else:
-                # Find the synonims and see what their POS is:
-                for tmp in wn.synsets(word):
-                    if tmp.name().split('.')[0] == word:
-                        if tmp.pos() == 'a':
-                            adj_dict[word] = 1
-    # return sortrd by value:
-    return {k: v for k, v in sorted(adj_dict.items(), reverse=True, key=lambda item: item[1])}
-
-def spacy_text_to_adj_dict(reviews):
-    adj_dict = {}
-    nlp = spacy.load("en_core_web_sm")
-    for text in reviews:
-        text = text.lower()
-        doc = nlp(text)
-        for token in doc:
-            if token.text in adj_dict:
-                adj_dict[token.text] += 1
-            else:
-                # Find the synonims and see what their POS is:
-                if token.pos_ == "ADJ":
-                    adj_dict[token.text] = 1
-    # return sortrd by value:
-    return {k: v for k, v in sorted(adj_dict.items(), reverse=True, key=lambda item: item[1])}
-
-adj_funcs = {'spacy': spacy_text_to_adj_dict, 'nltk': nltk_text_to_adj_dict}
+        reviews[rev_url] = " "+nav.get_product_review_text(AMAZON_PREFIX+rev_url)
+    with open(args.json_path, 'w') as save_file:
+        save_file.write(json.dumps(reviews))
 
 class Product():
     # Product have the URL and a List of review text
@@ -211,14 +170,9 @@ def parse_args():
         type=int, default=1000
         )
     parser.add_argument(
-        '-d', '--dump',
-        help='Save the dictionary to dump_file (using JSON)',
-        metavar="dump_file", default=None
-        )
-    parser.add_argument(
-        '-e', '--engine',
-        help='Choose NLP analyzing engine (NLTK or spaCy)', type=str.lower, # This casts the input into lowercase
-        metavar="adjective_engine", default='spacy', choices=['nltk', 'spacy']
+        '-j', '--json-path',
+        help='The path to save the JSON to',
+        metavar="json_path", default="scrapper_results.json"
         )
     parser.add_argument(
         '-rp', '--review-pages',
@@ -230,7 +184,4 @@ def parse_args():
 if __name__ == "__main__":
     main()
 
-#TODO: Add option to dump raw (and then analyze files, probably 2 classes/modules)
 #TODO: Add Product Information Text w. different dictionaries
-#TODO: Saving the url of the products, with a dict per URL
-#TODO: In the dictionary, save a pointer to the original text
