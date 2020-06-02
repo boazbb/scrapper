@@ -38,7 +38,6 @@ categories = ["arts-crafts", "automotive", "baby-products", "beauty", "stripbook
 REVIEW_IN_PAGE = 10
 
 def main():
-    print('a\na')
     args = parse_args()
     if (args.list_categories):
         # Print all possible categories
@@ -48,10 +47,9 @@ def main():
     nav = Navigator(args.keyword, args.category, args.review_pages)
     products = nav.get_products(args.pages)
     reviews = {}
-    for prod in tqdm(products):
+    for prod in products:
         rev_url = prod.url.replace("/dp/", "/product-review/")
-        print(f"The URL we are looking for:\n{AMAZON_PREFIX+rev_url}\n")
-        reviews[rev_url] = " "+nav.get_product_review_text(AMAZON_PREFIX+rev_url)
+        reviews[rev_url] = nav.get_product_review_text(AMAZON_PREFIX+rev_url)
     with open(args.json_path, 'w') as save_file:
         save_file.write(json.dumps(reviews))
 
@@ -98,11 +96,9 @@ class Navigator():
         i = 1
         while(len(products_urls) < n):
             url = self.get_url(i)
-            print(f"url is {url}")
             page = requests.get(url, headers=headers)
             self.doc = lxml.html.fromstring(page.content)
             products_a = self.doc.xpath(PRODUCT_XPATH)
-            print(f"In page {i} there are {len(products_a)} products.")
             if (len(products_a) == 0):
                 # This means we reached a page without products
                 break 
@@ -112,8 +108,7 @@ class Navigator():
                 if not (p.get('href') in products_urls) and not p.get('href').startswith('/s?k='):
                     products_urls.append(p.get('href'))
             i += 1
-        print(f"found {len(products_urls)} items.")
-        print(products_urls)
+        print(f"Found {len(products_urls)} items.")
         return Product.url_list_to_product_list(products_urls)
 
     def get_all_reviews_from_page(self, url):
@@ -140,12 +135,12 @@ class Navigator():
         if self.max_review_pages:
             page_number = min(page_number, self.max_review_pages)
         page_suffix = "&pageNumber={num}"
-        text = ''
+        text_list = []
+        print(f"\nScanning review pages for product {product_webpage.split('/')[3]}")
         for i in tqdm(range(1, page_number+1)):
         # Get the review text:
-            new_text = self.get_all_reviews_from_page(product_webpage+page_suffix.format(num=i))
-            text += new_text
-        return text
+            text_list.append(self.get_all_reviews_from_page(product_webpage+page_suffix.format(num=i)))
+        return text_list
 
 def parse_args():
     parser = argparse.ArgumentParser()
