@@ -11,13 +11,26 @@ def main():
     args = parse_args()
     analyzer = AdjectiveAnalyzer(args.engine)
     with open(args.json_file) as json_file:
-        review_dict = json.loads(json_file.read())
-    analyzer.analyze(review_dict)
+        scrap_dict = json.loads(json_file.read())
+    texts_list = text_list_from_dict(scrap_dict, args.text_to_analyze)
+    analyzer.analyze(texts_list)
     adj_dict = analyzer.get_adj_dict()
     print(adj_dict)
     if (args.output_file):
         with open(args.output_file, 'w') as save_file:
             save_file.write(json.dumps(adj_dict))
+
+def text_list_from_dict(scrap_dict, text_type):
+    text_list = []
+    if text_type in ['info', 'all']:
+        for product in scrap_dict:
+            info = scrap_dict[product]["Product Info"]
+            text_list += info['Bullets']
+            text_list += [info["Product Description"]]
+    if text_type in ['reviews', 'all']:
+        for product in scrap_dict:
+            text_list += scrap_dict[product]["Reviews"]
+    return text_list
 
 
 class AdjectiveAnalyzer:
@@ -69,7 +82,7 @@ class AdjectiveAnalyzer:
                     self.adj_dict[token.text] = 1
 
 
-    def analyze(self, review_dict):
+    def analyze(self, texts_list):
         # Figure out which function to use for analyzing the reviews
         if self.engine == "spacy":
             analyze_review = self.spacy_analyze_review
@@ -80,10 +93,9 @@ class AdjectiveAnalyzer:
         else:
             raise ValueError("Unrecognised NLP engine.")
 
-        for product_name in review_dict:
-            for review in review_dict[product_name]:
-                # Remove punctuation and move to lowercase
-                analyze_review(review.translate(str.maketrans('', '', string.punctuation)).lower())
+        for text in texts_list:
+            # Remove punctuation and move to lowercase
+            analyze_review(text.translate(str.maketrans('', '', string.punctuation)).lower())
 
     def get_adj_dict(self):
         # Sort the adjective dictionary before returning it
@@ -93,7 +105,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-e', '--engine',
-        help='Choose NLP analyzing engine (NLTK or spaCy)', type=str.lower, # This casts the input into lowercase
+        help='Choose NLP analyzing engine (NLTK, spaCy or both)', type=str.lower, # This casts the input into lowercase
         metavar="adjective_engine", default='spacy', choices=['nltk', 'spacy', 'both']
         )
     parser.add_argument(
@@ -105,6 +117,11 @@ def parse_args():
         '-o', '--output-file',
         help='The path of the JSON file of the output',
         metavar="output_path", default=None
+        )
+    parser.add_argument(
+        '--text-to-analyze',
+        help='Choose text to analyze (reviews, info or both)', type=str.lower, # This casts the input into lowercase
+        metavar="text_type", default='reviews', choices=['reviews', 'info', 'all']
         )
     args = parser.parse_args()
     return args

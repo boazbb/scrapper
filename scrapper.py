@@ -16,6 +16,8 @@ PRODUCT_XPATH = '//a[@class="a-link-normal a-text-normal"]'
 REVIEW_BUTTON_XPATH = '//a[@class="a-link-emphasis a-text-bold"]'
 REVIEW_COUNT_XPATH = '//span[@data-hook="cr-filter-info-review-count"]'
 REVIEW_TEXT_XPATH = '//span[@class="a-size-base review-text review-text-content"]'
+BULLET_XPATH = '//span[@class="a-list-item"]'
+PRODUCT_DESCRIPTION_XPATH = '//div[@id="productDescription"]'
 
 headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
@@ -46,12 +48,14 @@ def main():
         exit(0)
     nav = Navigator(args.keyword, args.category, args.review_pages)
     products = nav.get_products(args.pages)
-    reviews = {}
+    json_dict = {}
     for prod in products:
+        prod_info_dict = nav.get_product_info_dict(AMAZON_PREFIX+prod.url)
         rev_url = prod.url.replace("/dp/", "/product-review/")
-        reviews[rev_url] = nav.get_product_review_text(AMAZON_PREFIX+rev_url)
+        reviews = nav.get_product_review_text(AMAZON_PREFIX+rev_url)
+        json_dict[rev_url] = {'Product Info': prod_info_dict, 'Reviews': reviews}
     with open(args.json_path, 'w') as save_file:
-        save_file.write(json.dumps(reviews))
+        save_file.write(json.dumps(json_dict))
 
 class Product():
     # Product have the URL and a List of review text
@@ -120,8 +124,8 @@ class Navigator():
         for rev in review_spans:
             for i in rev:
                 text += str(i.text) + " "
-    
-        return text
+        # Encoding into UTF8 to make sure no bas characters are in the string
+        return text.encode('utf8',errors='ignore').decode()
 
     def get_product_review_text(self, product_webpage):
         """
@@ -141,6 +145,25 @@ class Navigator():
         # Get the review text:
             text_list.append(self.get_all_reviews_from_page(product_webpage+page_suffix.format(num=i)))
         return text_list
+
+    def get_product_info_dict(self, product_webpage):
+        # Get information bullets:
+        page = requests.get(product_webpage, headers=headers)
+        doc = lxml.html.fromstring(page.content)
+        divs = doc.xpath(BULLET_XPATH)
+        bullets = []
+        for i in divs:
+            if (i.text):
+                if (i.text.strip()):
+                    bullets.append(i.text.strip().encode('utf8',errors='ignore').decode())
+        # get procuct description
+        desc = ''
+        prod_desc = doc.xpath(PRODUCT_DESCRIPTION_XPATH)
+        if len(prod_desc) > 0:
+            prod_desc = prod_desc[0]
+            if len(prod_desc) == 3:
+                desc = prod_desc[2].text.encode('utf8',errors='ignore').decode()
+        return {'Bullets': bullets, 'Product Description': desc}
 
 def parse_args():
     parser = argparse.ArgumentParser()
