@@ -2,19 +2,15 @@ import argparse
 import string
 import json
 
-from nltk.corpus import wordnet as wn
-import spacy
-
-BLACKLIST = ['great', 'good', 'nice', 'on', 'enough', 'better']
+from engine import make_engine
 
 def main():
     args = parse_args()
-    analyzer = AdjectiveAnalyzer(args.engine)
+    analyzer = AdjectiveAnalyzer(args.engines)
     with open(args.json_file) as json_file:
         scrap_dict = json.loads(json_file.read())
     texts_list = text_list_from_dict(scrap_dict, args.text_to_analyze)
-    analyzer.analyze(texts_list)
-    adj_dict = analyzer.get_adj_dict()
+    adj_dict = analyzer.analyze(texts_list)
     print(adj_dict)
     if (args.output_file):
         with open(args.output_file, 'w') as save_file:
@@ -35,78 +31,37 @@ def text_list_from_dict(scrap_dict, text_type):
 
 class AdjectiveAnalyzer:
     
-    def __init__(self, engine='spacy'):
-        self.engine = engine
-        if engine == 'spacy' or  engine == 'both':
-            self.nlp = spacy.load("en_core_web_sm")
-        self.adj_dict = {}
-
-    def nltk_is_adj(self, word):
-        for tmp in wn.synsets(word):
-            if tmp.name().split('.')[0] == word:
-                if tmp.pos() == 'a':
-                    return True
-        return False
-
-    def nltk_analyze_review(self, review):
-        for word in review.split():
-            if word in BLACKLIST:
-                continue
-            if word in self.adj_dict:
-                self.adj_dict[word] += 1
-            else:
-                # Find the synonims and see what their POS is:
-                if self.nltk_is_adj(word):
-                    self.adj_dict[word] = 1
-
-    def spacy_analyze_review(self, review):
-        doc = self.nlp(review)
-        for token in doc:
-            if token.text in BLACKLIST:
-                continue
-            if token.text in self.adj_dict:
-                self.adj_dict[token.text] += 1
-            else:
-                if token.pos_ == "ADJ":
-                    self.adj_dict[token.text] = 1
-
-    def both_analyze_review(self, review):
-        doc = self.nlp(review)
-        for token in doc:
-            if token.text in BLACKLIST:
-                continue
-            if token.text in self.adj_dict:
-                self.adj_dict[token.text] += 1
-            else:
-                if token.pos_ == "ADJ" and self.nltk_is_adj(token.text):
-                    self.adj_dict[token.text] = 1
-
+    def __init__(self, engine_names):
+        self.engines = []
+        for name in engine_names:
+            self.engines.append(make_engine(name))
 
     def analyze(self, texts_list):
-        # Figure out which function to use for analyzing the reviews
-        if self.engine == "spacy":
-            analyze_review = self.spacy_analyze_review
-        elif self.engine == "nltk":
-            analyze_review = self.nltk_analyze_review
-        elif self.engine == "both":
-            analyze_review = self.both_analyze_review
-        else:
-            raise ValueError("Unrecognised NLP engine.")
-
+        adj_dict = {}
         for text in texts_list:
-            # Remove punctuation and move to lowercase
-            analyze_review(text.translate(str.maketrans('', '', string.punctuation)).lower())
-
-    def get_adj_dict(self):
-        # Sort the adjective dictionary before returning it
-        return {k: v for k, v in sorted(self.adj_dict.items(), reverse=True, key=lambda item: item[1])}
+            # Remove punctuation and move to lowercase TODO: Maybe remove? Does the engines uses this information?
+            text = text.translate(str.maketrans('', '', string.punctuation)).lower()
+            is_adj = [] # This will be a list of lists
+            for engine in self.engines:
+                is_adj.append([pos == engine.get_adjective_symbol() for pos in engine.get_text_pos(text)])
+                # We work with a boolean array
+            for i, word in enumerate(text.split()):
+                if all([adjs[i] for adjs in is_adj]):
+                    # if all the engine think this is an adjective
+                    if word in adj_dict:
+                        adj_dict[word] += 1
+                    else:
+                        adj_dict[word] = 1
+                
+            # Sort the adjective dictionary before returning it
+            return {k: v for k, v in sorted(adj_dict.items(), reverse=True, key=lambda item: item[1])}
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-e', '--engine',
-        help='Choose NLP analyzing engine (NLTK, spaCy or both)', type=str.lower, # This casts the input into lowercase
-        metavar="adjective_engine", default='spacy', choices=['nltk', 'spacy', 'both']
+        '-e', '--engines',
+        help='Choose NLP analyzing engine or engines', type=str.lower, # This casts the input into lowercase
+        metavar="adjective_engine", default='spacy', nargs='+', choices=['spacy', 'nltk']
         )
     parser.add_argument(
         '-j', '--json-file',
