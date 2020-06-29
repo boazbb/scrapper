@@ -1,0 +1,6 @@
+#TODO: 
+# For several objects: Think of adjectives and properties of the object,
+# Then run the code on a large database and see how it compares
+
+#TODO: Check how the engines work with and without punctuation
+#TODO: Refactor code (more OOPy and more functions and comments)
