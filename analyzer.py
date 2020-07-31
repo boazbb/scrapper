@@ -1,8 +1,13 @@
 import argparse
 import string
 import json
+from tqdm import tqdm
 
 from engine import make_engine
+
+BLACKLIST = ['the', 'and', 'to', 'i', 'it', 'for', 'a', 'is', 'this', 'of', 'was', 'in', 'my', 'with', 'very',
+                'that', 'not', 'as', 'than', 'its', 'but', 'nice', 'good', 'put', 'great', 'or', 'they', 'had',
+                'only', 'love', 'would', 'have', 'perfect']
 
 def main():
     args = parse_args()
@@ -38,7 +43,7 @@ class AdjectiveAnalyzer:
 
     def analyze(self, texts_list):
         adj_dict = {}
-        for text in texts_list:
+        for text in tqdm(texts_list):
             # Remove punctuation and move to lowercase TODO: Maybe remove? Does the engines uses this information?
             text = text.translate(str.maketrans('', '', string.punctuation)).lower()
             is_adj = [] # This will be a list of lists
@@ -46,6 +51,8 @@ class AdjectiveAnalyzer:
                 is_adj.append([pos == engine.get_adjective_symbol() for pos in engine.get_text_pos(text)])
                 # We work with a boolean array
             for i, word in enumerate(text.split()):
+                if word in BLACKLIST:
+                    continue
                 if all([adjs[i] for adjs in is_adj]):
                     # if all the engine think this is an adjective
                     if word in adj_dict:
@@ -53,15 +60,15 @@ class AdjectiveAnalyzer:
                     else:
                         adj_dict[word] = 1
                 
-            # Sort the adjective dictionary before returning it
-            return {k: v for k, v in sorted(adj_dict.items(), reverse=True, key=lambda item: item[1])}
+        # Sort the adjective dictionary before returning it
+        return {k: v for k, v in sorted(adj_dict.items(), reverse=True, key=lambda item: item[1])}
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '-e', '--engines',
         help='Choose NLP analyzing engine or engines', type=str.lower, # This casts the input into lowercase
-        metavar="adjective_engine", default='spacy', nargs='+', choices=['spacy', 'nltk']
+        metavar="adjective_engine", default='spacy', nargs='+', choices=['spacy', 'nltk', 'stanza']
         )
     parser.add_argument(
         '-j', '--json-file',

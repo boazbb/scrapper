@@ -29,7 +29,8 @@ headers = {
             'sec-fetch-site': 'same-origin',
             'sec-fetch-user': '?1',
             'upgrade-insecure-requests': '1',
-            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36',
+            # 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36',
+            'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246',
         }
 
 # hpc is health and household. just add &i={} in the url
@@ -51,7 +52,8 @@ def main():
     json_dict = {}
     for prod in products:
         prod_info_dict = nav.get_product_info_dict(AMAZON_PREFIX+prod.url)
-        rev_url = prod.url.replace("/dp/", "/product-review/")
+        print(f'prod url is {prod.url}')
+        rev_url = prod.url.replace("/dp/", "/product-review/").replace("/gp/", "/product-review/")
         reviews = nav.get_product_review_text(AMAZON_PREFIX+rev_url)
         json_dict[rev_url] = {'Product Info': prod_info_dict, 'Reviews': reviews}
     with open(args.json_path, 'w') as save_file:
@@ -113,6 +115,7 @@ class Navigator():
                     products_urls.append(p.get('href'))
             i += 1
         print(f"Found {len(products_urls)} items.")
+        print(f"\nProduct URLs:\n{products_urls}\n")
         return Product.url_list_to_product_list(products_urls)
 
     def get_all_reviews_from_page(self, url):
@@ -134,6 +137,9 @@ class Navigator():
         # Find the overall number of reviews:
         page = requests.get(product_webpage, headers=headers)
         doc = lxml.html.fromstring(page.content)
+        if 'To discuss automated access to Amazon data please contact' in page.content.decode():
+            print(f'\nCould not access review page for product at: {product_webpage}\nAmazon blocked the access due to automation.\n')
+            return []
         count = int(doc.xpath(REVIEW_COUNT_XPATH)[0].text.split()[-2].replace(',',''))
         page_number = - (-count // REVIEW_IN_PAGE) # Rounding Up
         if self.max_review_pages:
