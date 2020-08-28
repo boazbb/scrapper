@@ -5,9 +5,11 @@ from tqdm import tqdm
 
 from engine import make_engine
 
+# All the words we ignore because they are too general to give us informtaion about the product:
 BLACKLIST = ['the', 'and', 'to', 'i', 'it', 'for', 'a', 'is', 'this', 'of', 'was', 'in', 'my', 'with', 'very',
                 'that', 'not', 'as', 'than', 'its', 'but', 'nice', 'good', 'put', 'great', 'or', 'they', 'had',
-                'only', 'love', 'would', 'have', 'perfect']
+                'only', 'love', 'would', 'have', 'perfect', 'can', 'our', 'has', 'will', 'use', 'all', 'at', 'be',
+                'product', 'we', 'up', 'out', 'you', 'so', 'use', 'over']
 
 def main():
     args = parse_args()
@@ -35,12 +37,20 @@ def text_list_from_dict(scrap_dict, text_type):
 
 
 class AdjectiveAnalyzer:
-    
+    """
+    :param engine_names: A list of strings (for example: ['nltk', 'spacy'])
+    """
     def __init__(self, engine_names):
         self.engines = []
         for name in engine_names:
             self.engines.append(make_engine(name))
-
+            
+    
+    """
+    :param texts_list: A list of strings
+    :return: Dictionary where the keys are all the adjectives in all the texts,
+    and the values are the amount of times each adjective appeared.
+    """
     def analyze(self, texts_list):
         adj_dict = {}
         for text in tqdm(texts_list):

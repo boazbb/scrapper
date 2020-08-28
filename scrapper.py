@@ -4,9 +4,7 @@ from lxml import html
 from tqdm import tqdm # for pretty progress bars
 import argparse
 import json
-
-URL = "https://www.amazon.com/Happy-Haystack-Stainless-Bottle-Design/product-reviews/B07YL48NZQ/&reviewerType=all_reviews"
-URL = "https://www.amazon.com/Sleepwish-Blanket-Cartoon-Pattern-Blankets/product-reviews/B075L8PXM1/ref=cm_cr_arp_d_viewpnt_lft?ie=UTF8&reviewerType=all_reviews"
+import time
 
 SEARCH_URL = "https://www.amazon.com/s?k={SEARCH_TERM}&page={PAGE_NUM}"
 CAT_SEARCH_URL = "https://www.amazon.com/s?k={SEARCH_TERM}&i={CATEGORY}&page={PAGE_NUM}"
@@ -15,10 +13,12 @@ AMAZON_PREFIX = "https://www.amazon.com"
 PRODUCT_XPATH = '//a[@class="a-link-normal a-text-normal"]'
 REVIEW_BUTTON_XPATH = '//a[@class="a-link-emphasis a-text-bold"]'
 REVIEW_COUNT_XPATH = '//span[@data-hook="cr-filter-info-review-count"]'
+REVIEW_COUNT_XPATH_ALT = '//span[@data-hook="cr-filter-info-review-rating-count"]'
 REVIEW_TEXT_XPATH = '//span[@class="a-size-base review-text review-text-content"]'
 BULLET_XPATH = '//span[@class="a-list-item"]'
 PRODUCT_DESCRIPTION_XPATH = '//div[@id="productDescription"]'
 
+# The browser we pretend to be:
 headers = {
             'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3',
             'accept-encoding': 'gzip, deflate, br',
@@ -38,6 +38,7 @@ categories = ["arts-crafts", "automotive", "baby-products", "beauty", "stripbook
                 "instant-video", "fashion-womens", "fashion-mens", "fashion-girls", "fashion-boys", "deals", "hpc", "kitchen", "industrial", 
                 "luggage", "movies-tv", "music", "pets", "software", "sporting", "tools", "toys-and-games", "videogames"]
 
+# Number of reviews in a single page
 REVIEW_IN_PAGE = 10
 
 def main():
@@ -59,6 +60,10 @@ def main():
     with open(args.json_path, 'w') as save_file:
         save_file.write(json.dumps(json_dict))
 
+"""
+A class that represents a product, containing the URL of the product
+and the texts of the reviews
+"""
 class Product():
     # Product have the URL and a List of review text
     def __init__(self, url):
@@ -76,9 +81,13 @@ class Product():
         return product_list
 
 
+"""
+A class that navigates through amazon, looking for the review texts of all
+the product in the search
+"""
 class Navigator():
-    def __init__(self, product_name, category=None, max_review_pages=None):
-        self.product_name = product_name.replace(' ', '+')
+    def __init__(self, search_term, category=None, max_review_pages=None):
+        self.search_term = search_term.replace(' ', '+')
         self.category = category
         if category and category not in categories:
             print("Wrong category, doing general search instead.")
@@ -86,11 +95,13 @@ class Navigator():
         self.max_review_pages = max_review_pages
 
     def get_url(self, page_num):
+        """
+        Gets the URL of one of the pages in the results 
+        """
         if self.category:
-            return CAT_SEARCH_URL.format(SEARCH_TERM=self.product_name, CATEGORY=self.category, PAGE_NUM=page_num)
+            return CAT_SEARCH_URL.format(SEARCH_TERM=self.search_term, CATEGORY=self.category, PAGE_NUM=page_num)
         else:
-            return SEARCH_URL.format(SEARCH_TERM=self.product_name, PAGE_NUM=page_num)
-
+            return SEARCH_URL.format(SEARCH_TERM=self.search_term, PAGE_NUM=page_num)
 
     def get_products(self, n):
         """
@@ -119,6 +130,11 @@ class Navigator():
         return Product.url_list_to_product_list(products_urls)
 
     def get_all_reviews_from_page(self, url):
+        """
+        Extracts all the reviews from the given URL
+        :param url: The url of the page with the reviews
+        :return: A string with all the reviews in the page
+        """
         page = requests.get(url, headers=headers)
         doc = lxml.html.fromstring(page.content)
         text = ""
@@ -132,15 +148,27 @@ class Navigator():
 
     def get_product_review_text(self, product_webpage):
         """
-        return a list of URLs of the product
+        :param product_webpage: The URL of the product itself
+        :return: a list of URLs of the product's review pages
         """
         # Find the overall number of reviews:
+        # Amazon is blocking the connection so im trying a sleep:
+        # time.sleep(5)
         page = requests.get(product_webpage, headers=headers)
         doc = lxml.html.fromstring(page.content)
         if 'To discuss automated access to Amazon data please contact' in page.content.decode():
             print(f'\nCould not access review page for product at: {product_webpage}\nAmazon blocked the access due to automation.\n')
             return []
-        count = int(doc.xpath(REVIEW_COUNT_XPATH)[0].text.split()[-2].replace(',',''))
+        print(doc)
+        try:
+            print(f"Text is {doc.xpath(REVIEW_COUNT_XPATH)[0].text}")
+            count = int(doc.xpath(REVIEW_COUNT_XPATH)[0].text.split()[-2].replace(',',''))
+            print(f"Count is {count}")
+        except IndexError:
+            # There are two different versions of this...
+            print(f"Text is {doc.xpath(REVIEW_COUNT_XPATH_ALT)[0].text}")
+            count = int(doc.xpath(REVIEW_COUNT_XPATH_ALT)[0].text.split()[0].replace(',',''))
+            print(f"Count is {count}")
         page_number = - (-count // REVIEW_IN_PAGE) # Rounding Up
         if self.max_review_pages:
             page_number = min(page_number, self.max_review_pages)
@@ -153,6 +181,12 @@ class Navigator():
         return text_list
 
     def get_product_info_dict(self, product_webpage):
+        """
+        Gets the product information
+        :param product_webpage: The main URL for the product
+        :return: A dictionary with 2 keys: 'Bullets' for the list of short descriptions,
+        and 'Product Description' for the long paragraph. Not all products have both.
+        """
         # Get information bullets:
         page = requests.get(product_webpage, headers=headers)
         doc = lxml.html.fromstring(page.content)
@@ -207,5 +241,3 @@ def parse_args():
 
 if __name__ == "__main__":
     main()
-
-#TODO: Add Product Information Text w. different dictionaries
