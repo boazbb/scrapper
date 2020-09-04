@@ -8,7 +8,7 @@ def make_engine(engine_name):
     """
     legal_names = ['nltk', 'spacy', 'stanza']
     if engine_name not in legal_names:
-        raise ValueError('Unrecognised engine name.')
+        raise ValueError(f'Unrecognized engine name "{engine_name}".')
     elif engine_name == 'nltk':
         return NltkEngine()
     elif engine_name == 'spacy':
