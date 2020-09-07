@@ -63,9 +63,8 @@ class AdjectiveAnalyzer:
         for text in tqdm(texts_list):
             # Remove punctuation and move to lowercase:
             if not keep_punctuations:
-                print(f'Before:\n{text}\n')
-                text = text.translate(str.maketrans('', '', string.punctuation))
-                print(f'After:\n{text}\n')
+                # text = text.translate(str.maketrans('', '', string.punctuation))
+                text = text.translate(str.maketrans({key: " {0} ".format(key) for key in string.punctuation}))
             test = text.lower()
             is_adj = [] # This will be a list of lists
             for engine in self.engines:
