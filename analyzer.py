@@ -13,7 +13,7 @@ BLACKLIST = ['the', 'and', 'to', 'i', 'it', 'for', 'a', 'is', 'this', 'of', 'was
 
 def main():
     args = parse_args()
-    analyzer = AdjectiveAnalyzer(args.engines)
+    analyzer = AdjectiveAnalyzer(args.engines, args.vote_type)
     with open(args.json_file) as json_file:
         scrap_dict = json.loads(json_file.read())
     texts_list = text_list_from_dict(scrap_dict, args.text_to_analyze)
@@ -43,14 +43,24 @@ def text_list_from_dict(scrap_dict, text_type):
 
 
 class AdjectiveAnalyzer:
-    def __init__(self, engine_names):
+    def __init__(self, engine_names, vote_type):
         """
         :param engine_names: A list of strings (for example: ['nltk', 'spacy'])
         """
+        print(vote_type)
         self.engines = []
         for name in engine_names:
             self.engines.append(make_engine(name))
-            
+        if vote_type == 'intersection':
+            self.vote = all
+            print('\na\n')
+        elif vote_type == 'union':
+            self.vote = any
+            print('\nb\n')
+        elif vote_type == 'majority':
+            self.vote = lambda bool_list: sum([int(i) for i in bool_list]) >= (0.5 * len(bool_list))
+            print('\nc\n')
+        
 
     def analyze(self, texts_list, keep_punctuations=True):
         """
@@ -77,7 +87,7 @@ class AdjectiveAnalyzer:
                     word = word.translate(str.maketrans('', '', string.punctuation))
                 if word in BLACKLIST:
                     continue
-                if all([adjs[i] for adjs in is_adj]):
+                if self.vote([adjs[i] for adjs in is_adj]):
                     # if all the engine think this is an adjective
                     if word in adj_dict:
                         adj_dict[word] += 1
@@ -93,6 +103,11 @@ def parse_args():
         '-e', '--engines',
         help='Choose NLP analyzing engine or engines', type=str.lower, # This casts the input into lowercase
         metavar="adjective_engine", default=['spacy'], nargs='+', choices=['spacy', 'nltk', 'stanza']
+        )
+    parser.add_argument(
+        '-v', '--vote-type',
+        help='In case of several engines, how to decide which words are adjective', type=str.lower, # This casts the input into lowercase
+        metavar="vote-type", default='intersection', choices=['intersection', 'union', 'majority']
         )
     parser.add_argument(
         '-j', '--json-file',
