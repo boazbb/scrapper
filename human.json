@@ -1,0 +1,51 @@
+{
+    "noam": {
+        "ball": ["inflatable", "wobbly", "portable", "rustic", "lovely"],
+        "vase": ["classic", "elderly", "crushed", "adjustable", "decorative"],
+        "birdcage": ["frozen", "Indian", "floral", "vibrant", "colorful"],
+        "table": ["vertical", "African", "indoor", "roomy", "horizontal"],
+        "oven": ["warm", "hot", "burnt", "medical", "accurate"]
+    },
+    "shaul": {
+        "ball": ["inflatable", "wobbly", "colorful", "crushed", "lovely"],
+        "vase": ["Indian", "African", "floral", "rustic", "decorative"],
+        "birdcage": ["classic", "adjustable", "vibrant", "frozen", "elderly"],
+        "table": ["vertical", "accurate", "horizontal", "indoor", "roomy"],
+        "oven": ["hot", "burnt", "portable", "medical", "warm"]
+    },
+    "michael": {
+        "ball": ["inflatable", "crushed", "colorful", "medical", "indoor"],
+        "vase": ["classic", "vibrant", "floral", "Indian", "African"],
+        "birdcage": ["roomy", "lovely", "decorative", "vertical", "portable"],
+        "table": ["elderly", "wobbly", "adjustable", "rustic", "horizontal"],
+        "oven": ["hot", "burnt", "accurate", "frozen", "warm"]
+    },
+    "david": {
+        "ball": ["crushed", "accurate", "inflatable", "vertical", "portable"],
+        "vase": ["classic", "lovely", "floral", "colorful", "decorative"],
+        "birdcage": ["roomy", "elderly", "rustic", "Indian", "African"],
+        "table": ["medical", "adjustable", "vibrant", "wobbly", "horizontal"],
+        "oven": ["hot", "burnt", "indoor", "frozen", "warm"]
+    },
+    "yael": {
+        "ball": ["crushed", "elderly", "inflatable", "vertical", "medical"],
+        "vase": ["vibrant", "lovely", "floral", "colorful", "roomy"],
+        "birdcage": ["rustic", "classic", "decorative", "Indian", "African"],
+        "table": ["accurate", "adjustable", "wobbly", "portable", "horizontal"],
+        "oven": ["hot", "burnt", "indoor", "frozen", "warm"]
+    },
+    "adi": {
+        "ball": ["frozen", "elderly", "inflatable",  "medical", "colorful"],
+        "vase": ["accurate", "lovely", "rustic", "floral", "crushed"],
+        "birdcage": ["indoor", "vibrant", "decorative", "adjustable", "African"],
+        "table": ["classic", "horizontal", "roomy", "wobbly", "vertical"],
+        "oven": ["hot", "burnt", "portable", "Indian", "warm"]
+    },
+    "naomi": {
+        "ball": ["inflatable", "colorful", "accurate", "floral", "medical"],
+        "vase": ["decorative", "lovely", "elderly", "vertical", "crushed"],
+        "birdcage": ["vibrant", "rustic", "roomy", "African", "Indian"],
+        "table": ["classic", "portable", "adjustable", "wobbly", "indoor"],
+        "oven": ["hot", "burnt", "horizontal", "frozen", "warm"]
+    }
+}

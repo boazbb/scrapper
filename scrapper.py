@@ -12,7 +12,8 @@ AMAZON_PREFIX = "https://www.amazon.com"
 
 PRODUCT_XPATH = '//a[@class="a-link-normal a-text-normal"]'
 REVIEW_BUTTON_XPATH = '//a[@class="a-link-emphasis a-text-bold"]'
-REVIEW_COUNT_XPATH = '//span[@data-hook="cr-filter-info-review-count"]'
+#REVIEW_COUNT_XPATH = '//span[@data-hook="cr-filter-info-review-count"]'
+REVIEW_COUNT_XPATH = '//span[@class="a-size-base a-color-secondary"]'
 REVIEW_COUNT_XPATH_ALT = '//span[@data-hook="cr-filter-info-review-rating-count"]'
 REVIEW_TEXT_XPATH = '//span[@class="a-size-base review-text review-text-content"]'
 BULLET_XPATH = '//span[@class="a-list-item"]'
@@ -29,7 +30,7 @@ headers = {
             'sec-fetch-site': 'same-origin',
             'sec-fetch-user': '?1',
             'upgrade-insecure-requests': '1',
-            # 'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36',
+            #'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36',
             'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.246',
         }
 
@@ -153,7 +154,7 @@ class Navigator():
         """
         # Find the overall number of reviews:
         # Amazon is blocking the connection so im trying a sleep:
-        # time.sleep(5)
+        time.sleep(5)
         page = requests.get(product_webpage, headers=headers)
         doc = lxml.html.fromstring(page.content)
         if 'To discuss automated access to Amazon data please contact' in page.content.decode():
@@ -162,13 +163,12 @@ class Navigator():
         print(doc)
         try:
             print(f"Text is {doc.xpath(REVIEW_COUNT_XPATH)[0].text}")
-            count = int(doc.xpath(REVIEW_COUNT_XPATH)[0].text.split()[-2].replace(',',''))
+            count = int(doc.xpath(REVIEW_COUNT_XPATH)[0].text.split()[0].replace(',',''))
             print(f"Count is {count}")
         except IndexError:
-            # There are two different versions of this...
-            print(f"Text is {doc.xpath(REVIEW_COUNT_XPATH_ALT)[0].text}")
-            count = int(doc.xpath(REVIEW_COUNT_XPATH_ALT)[0].text.split()[0].replace(',',''))
-            print(f"Count is {count}")
+            print(f"\nError in parsing review data")
+            print(doc.xpath(REVIEW_COUNT_XPATH), '\n')
+            return []
         page_number = - (-count // REVIEW_IN_PAGE) # Rounding Up
         if self.max_review_pages:
             page_number = min(page_number, self.max_review_pages)
@@ -202,7 +202,10 @@ class Navigator():
         if len(prod_desc) > 0:
             prod_desc = prod_desc[0]
             if len(prod_desc) == 3:
-                desc = prod_desc[2].text.encode('utf8',errors='ignore').decode()
+                if not prod_desc[2].text:
+                    desc = ""
+                else:
+                    desc = prod_desc[2].text.encode('utf8',errors='ignore').decode()
         return {'Bullets': bullets, 'Product Description': desc}
 
 def parse_args():
