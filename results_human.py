@@ -26,6 +26,31 @@ NUMBERING = [
 
 NEGLIGIBLE = 5
 
+def main():
+    print_conf_matrix()
+
+def print_word_matrix():
+    table = np.zeros((25, 25))
+    words = subvert()
+    for word in words:
+        for item in words[word]:
+            for sim_word in WORDS[item]: # Very informative names!
+                table[NUMBERING.index(word)][NUMBERING.index(sim_word)] += 1
+    # for line in table:
+    #     line /= line.sum()
+    show_heatmap(table, NUMBERING, NUMBERING, 'Human', 'Scrapper', 'Apperences in related')
+
+def subvert():
+    words = defaultdict(lambda: [])
+    with open("human.json", 'r') as f:
+        j = json.loads(f.read())
+        for person in j:
+            for item in j[person]:
+                for word in j[person][item]:
+                    words[word].append(item)
+                    print(word)
+    return words
+
 def print_conf_matrix():
     table = np.zeros((5, 5))
     with open("human.json", 'r') as f:
@@ -33,12 +58,12 @@ def print_conf_matrix():
         for person in j:
             for item in j[person]:
                 for word in j[person][item]:
-                    true_class = NUMBERING.index(word) // 5
-                    pred_class = ITEMS.index(item)
-                    table[true_class][pred_class] += 1
+                    scrapper_class = NUMBERING.index(word) // 5
+                    human_class = ITEMS.index(item)
+                    table[scrapper_class][human_class] += 1
     for line in table:
         line /= line.sum()
-    show_heatmap(table, ITEMS, ITEMS)
+    show_heatmap(table, ITEMS, ITEMS, 'Human', 'Scrapper', 'Percent (Line-Normalized)')
                     
 
 def print_human_mat():
@@ -57,11 +82,12 @@ def print_human_mat():
             table[ITEMS.index(item)][NUMBERING.index(word)] += 1
     show_heatmap(table, ITEMS, NUMBERING)
 
-def show_heatmap(table, index, columns):
+def show_heatmap(table, index, columns, xl='', yl='', title=''):
     df_cm = DataFrame(table, index=index, columns=columns)
     ax = sn.heatmap(df_cm, cmap='Oranges', annot=True)
     bottom, top = ax.get_ylim()
     ax.set_ylim(bottom + 0.5, top - 0.5)
+    ax.set(xlabel=xl, ylabel=yl, title=title)
     plt.show()
 
 def validate():
@@ -122,4 +148,4 @@ def find_words():
             print(f"  {unique_words[k][i]}")
 
 if __name__ == "__main__":
-    print_conf_matrix()
+    main()
